@@ -15,6 +15,9 @@ git clone https://github.com/firebreath/FireBreath.git
 ```
 git checkout firebreath-1.6
 ```
+
+- If using Visual Studio Express, download WinDDK 7.1, and install the 'Build Environments' 
+  - http://www.microsoft.com/en-us/download/details.aspx?id=11800
 - follow FireBreath docs to run prep2008.cmd on this project
 - build generated visual studio project
 
