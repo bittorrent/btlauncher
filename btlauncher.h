@@ -9,19 +9,42 @@
 #ifndef H_btlauncherPLUGIN
 #define H_btlauncherPLUGIN
 
+#include <windows.h>
+#include <wininet.h>
+
 #include "PluginWindow.h"
 #include "PluginEvents/MouseEvents.h"
 #include "PluginEvents/AttachedEvent.h"
 
 #include "PluginCore.h"
+#include "json/json.h"
+#include "fbjson.h"
+
+#include "svn_info.h"
+#include "PluginVersion.h"
+
+#ifdef _DEBUG
+#define CRASH_PING_HOST "bench.staging.utorrent.com"
+#else
+#define CRASH_PING_HOST "bench.utorrent.com"
+#endif
 
 
 FB_FORWARD_PTR(btlauncher)
 class btlauncher : public FB::PluginCore
 {
 public:
-    static void StaticInitialize();
+	static std::string pluginName;
+	static HMODULE inetdll;
+	static std::string version;
+	static std::string svnRevision;
+	static std::string svnDate;
+
+	static void StaticInitialize();
     static void StaticDeinitialize();
+	static void ThreadPostJsonToBench(const std::string &action, FB::VariantMap &data);
+	static std::string GetLogFilePathName();
+	static void DeleteLogFile();
 
 public:
     btlauncher();
