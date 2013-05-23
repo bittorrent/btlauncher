@@ -19,7 +19,9 @@
 
 // static members to use for bench communications
 std::string btlauncher::pluginName;
+#ifdef WIN32
 HMODULE btlauncher::inetdll;
+#endif
 std::string btlauncher::version;
 std::string btlauncher::svnRevision;
 std::string btlauncher::svnDate;
@@ -31,7 +33,7 @@ char* itoascii(long num)
     return (text);
 }
 
-
+#ifdef WIN32
 /**
 	lpParam should point to a std::string type with the text to be posted to bench.
 	Pass in a pointer to a dynamically allocated string (in lpParm) and be delete 
@@ -131,6 +133,7 @@ void InstallExceptionHandler(MYEXCEPTIONHANDLER ExceptionHandler)
 	BOOL prevented = PreventSetUnhandledExceptionFilter(&MyDummySetUnhandledExceptionFilter);
 #endif
 }
+#endif // WIN32
 
 std::string btlauncher::GetLogFilePathName()
 {
@@ -168,8 +171,12 @@ void btlauncher::ThreadPostJsonToBench(const std::string &action, FB::VariantMap
 	// Use the writer to write out the string
 	std::string* serializedJsonStr = new std::string(writer.write(json_value));
 
+#ifdef WIN32
 	// the thread will need to delete the string object when it is finished
 	CreateThread(NULL, 0, SendFunction, serializedJsonStr, 0, NULL);
+#else
+    // TODO: implement pthread variant
+#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -183,7 +190,10 @@ void btlauncher::StaticInitialize()
 {
 	// Place one-time initialization stuff here; As of FireBreath 1.4 this should only
     // be called once per process
+#ifdef WIN32
+	inetdll = LoadLibrary(_T("wininet.dll"));
 	InstallExceptionHandler(MyExceptionHandler);
+#endif
 
 	btlauncher::version = itoascii(MAJOR);
 	btlauncher::version += ".";
@@ -194,8 +204,6 @@ void btlauncher::StaticInitialize()
 	btlauncher::svnDate = SVN_REVISION_DATE;
 	btlauncher::svnRevision = itoascii(SVN_REVISION);
 
-	inetdll = LoadLibrary(_T("wininet.dll"));
- 
 #ifdef SHARE
 	pluginName = "SoSharePlugin";
 #elif TORQUE
@@ -219,7 +227,9 @@ void btlauncher::StaticDeinitialize()
 {
     // Place one-time deinitialization stuff here. As of FireBreath 1.4 this should
     // always be called just before the plugin library is unloaded
+#ifdef WIN32
 	FreeLibrary(inetdll);
+#endif
 	FB::VariantMap data;
 	ThreadPostJsonToBench("StaticDeinitialize", data);
 }

@@ -9,8 +9,10 @@
 #ifndef H_btlauncherPLUGIN
 #define H_btlauncherPLUGIN
 
+#ifdef WIN32
 #include <windows.h>
 #include <wininet.h>
+#endif
 
 #include "PluginWindow.h"
 #include "PluginEvents/MouseEvents.h"
@@ -35,7 +37,9 @@ class btlauncher : public FB::PluginCore
 {
 public:
 	static std::string pluginName;
+#ifdef WIN32
 	static HMODULE inetdll;
+#endif
 	static std::string version;
 	static std::string svnRevision;
 	static std::string svnDate;
