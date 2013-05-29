@@ -121,9 +121,31 @@ LONG WINAPI MyExceptionHandler(_EXCEPTION_POINTERS *ExceptionInfo)
 	return EXCEPTION_EXECUTE_HANDLER;
 }
 
+void uncaught_exception()
+{
+	dataMap["action"] = "uncaught c++ exception";
+	dataMap["eventName"] = btlauncher::pluginName;
+	dataMap["version"] = btlauncher::version;
+	dataMap["svn_revision"] = btlauncher::svnRevision;
+	dataMap["svn_date"] = btlauncher::svnDate;
+    
+	// Create a Json::Value object which will store the contents of the VariantMap
+	Json::Value json_value = FB::variantToJsonValue(dataMap);
+    
+	// Create a StyledWriter which will convert our Json::Value to a styled JSON string
+	Json::StyledWriter writer;
+    
+	// Use the writer to write out the string
+	std::string* serializedJsonStr = new std::string(writer.write(json_value));
+
+    SendFunction(serializedJsonStr);
+}
+
 void InstallExceptionHandler(MYEXCEPTIONHANDLER ExceptionHandler)
 {
 	SetUnhandledExceptionFilter(ExceptionHandler);
+
+    std::set_terminate(uncaught_exception);
 
 #if defined _M_X64
 	// Prevent the MS CRT from installing a handler that overrides our handler
@@ -133,6 +155,13 @@ void InstallExceptionHandler(MYEXCEPTIONHANDLER ExceptionHandler)
 	BOOL prevented = PreventSetUnhandledExceptionFilter(&MyDummySetUnhandledExceptionFilter);
 #endif
 }
+#else
+
+void uncaught_exception()
+{
+    fprintf(stderr, "uncaught exception\n");
+}
+
 #endif // WIN32
 
 std::string btlauncher::GetLogFilePathName()
@@ -179,6 +208,7 @@ void btlauncher::ThreadPostJsonToBench(const std::string &action, FB::VariantMap
 #endif
 }
 
+
 ///////////////////////////////////////////////////////////////////////////////
 /// @fn btlauncher::StaticInitialize()
 ///
@@ -193,6 +223,8 @@ void btlauncher::StaticInitialize()
 #ifdef WIN32
 	inetdll = LoadLibrary(_T("wininet.dll"));
 	InstallExceptionHandler(MyExceptionHandler);
+#else
+    std::set_terminate(uncaught_exception);
 #endif
 
 	btlauncher::version = itoascii(MAJOR);
