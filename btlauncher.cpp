@@ -1,12 +1,3 @@
-/**********************************************************\
-
-  Auto-generated btlauncher.cpp
-
-  This file contains the auto-generated main plugin object
-  implementation for the BitTorrent Launcher project
-
-\**********************************************************/
-
 #include <fstream>
 
 #ifdef FB_WIN

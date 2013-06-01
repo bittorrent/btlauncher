@@ -1,8 +1,3 @@
-/**********************************************************\
-
-  Auto-generated btlauncherAPI.h
-
-\**********************************************************/
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -30,43 +25,46 @@ typedef struct kinfo_proc kinfo_proc;
 class btlauncherAPI : public FB::JSAPIAuto
 {
 public:
-    btlauncherAPI(const btlauncherPtr& plugin, const FB::BrowserHostPtr& host);
-    virtual ~btlauncherAPI();
+	btlauncherAPI(const btlauncherPtr& plugin, const FB::BrowserHostPtr& host);
+	virtual ~btlauncherAPI();
 
-    btlauncherPtr getPlugin();
+	btlauncherPtr getPlugin();
 
-    // Read-only property ${PROPERTY.ident}
-    std::string get_version();
+	// Read-only property ${PROPERTY.ident}
+	std::string get_version();
 
-    // Method echo
-    void ajax(const std::string& url, const FB::JSObjectPtr& callback);
-    void checkForUpdate(const FB::JSObjectPtr& callback);
+	// Method echo
+	void ajax(const std::string& url, const FB::JSObjectPtr& callback);
+	void checkForUpdate(const FB::JSObjectPtr& callback);
 	void downloadProgram(const std::string& val, const FB::JSObjectPtr& callback);
 	std::string getInstallPath(const std::string& val);
 	std::string getInstallVersion(const std::string& val);
 	FB::variant runProgram(const std::string& program, const FB::JSObjectPtr& callback);
-    void gotCheckForUpdate(const FB::JSObjectPtr& callback, bool success, const FB::HeaderMap& header, const boost::shared_array<uint8_t>& data, const size_t size);
+	void gotCheckForUpdate(const FB::JSObjectPtr& callback, bool success
+		, const FB::HeaderMap& header, const boost::shared_array<uint8_t>& data
+		, const size_t size);
 	FB::VariantList isRunning(const std::string& val);
 	FB::VariantList stopRunning(const std::string& val);
 
 private:
 	int GetBSDProcessList(kinfo_proc **procList, size_t *procCount);
-    std::string installPath;
-    btlauncherWeakPtr m_plugin;
-    FB::BrowserHostPtr m_host;
-    
-    void gotDownloadProgram(const FB::JSObjectPtr& callback, 
-										std::string& program,
-									   bool success,
-									   const FB::HeaderMap& headers,
-									   const boost::shared_array<uint8_t>& data,
-									   const size_t size);
-									   
+	std::string installPath;
+	btlauncherWeakPtr m_plugin;
+	FB::BrowserHostPtr m_host;
+	int m_outstanding_ajax_requests;
+
+	void gotDownloadProgram(const FB::JSObjectPtr& callback, 
+		std::string& program,
+		bool success,
+		const FB::HeaderMap& headers,
+		const boost::shared_array<uint8_t>& data,
+		const size_t size);
+
 	void gotajax(const FB::JSObjectPtr& callback, 
-									bool success,
-									const FB::HeaderMap& headers,
-									const boost::shared_array<uint8_t>& data,
-									const size_t size);									   
+		bool success,
+		const FB::HeaderMap& headers,
+		const boost::shared_array<uint8_t>& data,
+		const size_t size);
 };
 
 #endif // H_btlauncherAPI

@@ -19,13 +19,6 @@
 #include <atlstr.h>
 #include <string.h>
 
-
-#define USE_CURL 0
-
-#if USE_CURL
-#include "curl/curl.h"
-#endif
-
 #define bufsz 2048
 #define BT_HEXCODE "4823DF041B" // BT4823DF041B0D
 #define BTLIVE_CODE "BTLive"
@@ -86,7 +79,10 @@ BOOL write_elevation(const std::wstring& path, const std::wstring& name);
 /// @see FB::JSAPIAuto::registerEvent
 ///////////////////////////////////////////////////////////////////////////////
 
-btlauncherAPI::btlauncherAPI(const btlauncherPtr& plugin, const FB::BrowserHostPtr& host) : m_plugin(plugin), m_host(host)
+btlauncherAPI::btlauncherAPI(const btlauncherPtr& plugin, const FB::BrowserHostPtr& host)
+	: m_plugin(plugin)
+	, m_host(host)
+	m_outstanding_ajax_requests(0)
 {
 	registerMethod("getInstallPath", make_method(this, &btlauncherAPI::getInstallPath));
 	registerMethod("getInstallVersion", make_method(this, &btlauncherAPI::getInstallVersion));
@@ -102,10 +98,10 @@ btlauncherAPI::btlauncherAPI(const btlauncherPtr& plugin, const FB::BrowserHostP
 	registerMethod("ajax", make_method(this, &btlauncherAPI::ajax));
 	registerMethod("pair", make_method(this, &btlauncherAPI::pair));
 
-    // Read-only property
-    registerProperty("version",
-                     make_property(this,
-                        &btlauncherAPI::get_version));
+	// Read-only property
+	registerProperty("version",
+		make_property(this,
+			&btlauncherAPI::get_version));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -117,6 +113,13 @@ btlauncherAPI::btlauncherAPI(const btlauncherPtr& plugin, const FB::BrowserHostP
 ///////////////////////////////////////////////////////////////////////////////
 btlauncherAPI::~btlauncherAPI()
 {
+	if (m_outstanding_ajax_requests != 0)
+	{
+		char buf[100];
+		snprintf(buf, sizeof(buf), "ERROR: destructing with outstanding ajax requests: %d", m_outstanding_ajax_requests);
+		FBLOG_ERROR("~btlauncherAPI()", buf);
+	}
+	assert(m_outstanding_ajax_requests == 0);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -351,7 +354,6 @@ void btlauncherAPI::checkForUpdate(const FB::JSObjectPtr& callback) {
 
 void btlauncherAPI::ajax(const std::string& url, const FB::JSObjectPtr& callback) {
 	OutputDebugString(_T("ajax ENTER"));
-#if !USE_CURL
 	if (FB::URI::fromString(url).domain != "127.0.0.1") {
 		FB::VariantMap response;
 		response["allowed"] = false;
@@ -359,36 +361,23 @@ void btlauncherAPI::ajax(const std::string& url, const FB::JSObjectPtr& callback
 		do_callback(callback, FB::variant_list_of(response));
 		return;
 	}
+	++m_outstanding_ajax_requests;
 	FB::SimpleStreamHelper::AsyncGet(m_host, FB::URI::fromString(url), 
 		boost::bind(&btlauncherAPI::gotajax, this, callback, _1, _2, _3, _4), false
 		);
 	OutputDebugString(_T("ajax EXIT"));
-#else
-
-    CURL *curl;
-    CURLcode res;
- 
-    curl = curl_easy_init();
-    if(curl) {
-        curl_easy_setopt(curl, CURLOPT_URL, "http://firebreath.com");
-        res = curl_easy_perform(curl);
- 
-        /* always cleanup */
-        curl_easy_cleanup(curl);
-    }
- 
-    //return res;
-
-#endif
 }
 
-void btlauncherAPI::gotajax(const FB::JSObjectPtr& callback, 
-							bool success,
-						    const FB::HeaderMap& headers,
-						    const boost::shared_array<uint8_t>& data,
-						    const size_t size) {
+void btlauncherAPI::gotajax(const FB::JSObjectPtr& callback,
+	bool success,
+	const FB::HeaderMap& headers,
+	const boost::shared_array<uint8_t>& data,
+	const size_t size) {
 
 	OutputDebugString(_T("gotajax ENTER"));
+
+	assert(m_outstanding_ajax_requests > 0);
+	--m_outstanding_ajax_requests;
 
 	FB::VariantMap response;
 	response["allowed"] = true;
@@ -402,16 +391,16 @@ void btlauncherAPI::gotajax(const FB::JSObjectPtr& callback,
 	}
 	FB::VariantMap outHeaders;
 	for (FB::HeaderMap::const_iterator it = headers.begin(); it != headers.end(); ++it) {
-        if (headers.count(it->first) > 1) {
-            if (outHeaders.find(it->first) != outHeaders.end()) {
-                outHeaders[it->first].cast<FB::VariantList>().push_back(it->second);
-            } else {
-                outHeaders[it->first] = FB::VariantList(FB::variant_list_of(it->second));
-            }
-        } else {
-            outHeaders[it->first] = it->second;
-        }
-    }
+		if (headers.count(it->first) > 1) {
+			if (outHeaders.find(it->first) != outHeaders.end()) {
+				outHeaders[it->first].cast<FB::VariantList>().push_back(it->second);
+			} else {
+				outHeaders[it->first] = FB::VariantList(FB::variant_list_of(it->second));
+			}
+		} else {
+			outHeaders[it->first] = it->second;
+		}
+	}
 	response["headers"] = outHeaders;
 	response["size"] = size;
 	std::string result = std::string((const char*) data.get(), size);

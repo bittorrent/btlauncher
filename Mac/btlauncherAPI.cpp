@@ -69,90 +69,90 @@ int btlauncherAPI::GetBSDProcessList(kinfo_proc **procList, size_t *procCount)
 // On success, the function returns 0.
 // On error, the function returns a BSD errno value.
 {
-    int                 err;
-    kinfo_proc *        result;
-    bool                done;
-    static const int    name[] = { CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0 };
-    // Declaring name as const requires us to cast it when passing it to
-    // sysctl because the prototype doesn't include the const modifier.
-    size_t              length;
+	int                 err;
+	kinfo_proc *        result;
+	bool                done;
+	static const int    name[] = { CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0 };
+	// Declaring name as const requires us to cast it when passing it to
+	// sysctl because the prototype doesn't include the const modifier.
+	size_t              length;
 	
-    assert( procList != NULL);
-    assert(*procList == NULL);
-    assert(procCount != NULL);
+	assert( procList != NULL);
+	assert(*procList == NULL);
+	assert(procCount != NULL);
 	
-    *procCount = 0;
+	*procCount = 0;
 	
-    // We start by calling sysctl with result == NULL and length == 0.
-    // That will succeed, and set length to the appropriate length.
-    // We then allocate a buffer of that size and call sysctl again
-    // with that buffer.  If that succeeds, we're done.  If that fails
-    // with ENOMEM, we have to throw away our buffer and loop.  Note
-    // that the loop causes use to call sysctl with NULL again; this
-    // is necessary because the ENOMEM failure case sets length to
-    // the amount of data returned, not the amount of data that
-    // could have been returned.
+	// We start by calling sysctl with result == NULL and length == 0.
+	// That will succeed, and set length to the appropriate length.
+	// We then allocate a buffer of that size and call sysctl again
+	// with that buffer.  If that succeeds, we're done.  If that fails
+	// with ENOMEM, we have to throw away our buffer and loop.  Note
+	// that the loop causes use to call sysctl with NULL again; this
+	// is necessary because the ENOMEM failure case sets length to
+	// the amount of data returned, not the amount of data that
+	// could have been returned.
 	
-    result = NULL;
-    done = false;
-    do {
-        assert(result == NULL);
+	result = NULL;
+	done = false;
+	do {
+		assert(result == NULL);
 		
-        // Call sysctl with a NULL buffer.
+		// Call sysctl with a NULL buffer.
 		
-        length = 0;
-        err = sysctl( (int *) name, (sizeof(name) / sizeof(*name)) - 1,
-					 NULL, &length,
-					 NULL, 0);
-        if (err == -1) {
-            err = errno;
-        }
+		length = 0;
+		err = sysctl( (int *) name, (sizeof(name) / sizeof(*name)) - 1,
+			NULL, &length,
+			NULL, 0);
+		if (err == -1) {
+			err = errno;
+		}
 		
-        // Allocate an appropriately sized buffer based on the results
-        // from the previous call.
+		// Allocate an appropriately sized buffer based on the results
+		// from the previous call.
 		
-        if (err == 0) {
-            result = (kinfo_proc *)malloc(length);
-            if (result == NULL) {
-                err = ENOMEM;
-            }
-        }
-		
-        // Call sysctl again with the new buffer.  If we get an ENOMEM
-        // error, toss away our buffer and start again.
-		
-        if (err == 0) {
-            err = sysctl( (int *) name, (sizeof(name) / sizeof(*name)) - 1,
-						 result, &length,
-						 NULL, 0);
-            if (err == -1) {
-                err = errno;
-            }
-            if (err == 0) {
-                done = true;
-            } else if (err == ENOMEM) {
-                assert(result != NULL);
-                free(result);
-                result = NULL;
-                err = 0;
-            }
-        }
-    } while (err == 0 && ! done);
-	
-    // Clean up and establish post conditions.
-	
-    if (err != 0 && result != NULL) {
-        free(result);
-        result = NULL;
-    }
-    *procList = result;
-    if (err == 0) {
-        *procCount = length / sizeof(kinfo_proc);
-    }
-	
-    assert( (err == 0) == (*procList != NULL) );
-	
-    return err;
+		if (err == 0) {
+			result = (kinfo_proc *)malloc(length);
+			if (result == NULL) {
+				err = ENOMEM;
+			}
+		}
+
+		// Call sysctl again with the new buffer.  If we get an ENOMEM
+		// error, toss away our buffer and start again.
+
+		if (err == 0) {
+			err = sysctl( (int *) name, (sizeof(name) / sizeof(*name)) - 1,
+				result, &length,
+				NULL, 0);
+			if (err == -1) {
+				err = errno;
+			}
+			if (err == 0) {
+				done = true;
+			} else if (err == ENOMEM) {
+				assert(result != NULL);
+				free(result);
+				result = NULL;
+				err = 0;
+			}
+		}
+	} while (err == 0 && ! done);
+
+	// Clean up and establish post conditions.
+
+	if (err != 0 && result != NULL) {
+		free(result);
+		result = NULL;
+	}
+	*procList = result;
+	if (err == 0) {
+		*procCount = length / sizeof(kinfo_proc);
+	}
+
+	assert( (err == 0) == (*procList != NULL) );
+
+	return err;
 }
 
 static void child_handler(int sig)
@@ -173,7 +173,10 @@ static void child_handler(int sig)
 /// @see FB::JSAPIAuto::registerProperty
 /// @see FB::JSAPIAuto::registerEvent
 ///////////////////////////////////////////////////////////////////////////////
-btlauncherAPI::btlauncherAPI(const btlauncherPtr& plugin, const FB::BrowserHostPtr& host) : m_plugin(plugin), m_host(host)
+btlauncherAPI::btlauncherAPI(const btlauncherPtr& plugin, const FB::BrowserHostPtr& host)
+	: m_plugin(plugin)
+	, m_host(host)
+	, m_outstanding_ajax_requests(0)
 {
 	FBLOG_INFO("btlauncherAPI()", "START");
 	registerMethod("getInstallPath", make_method(this, &btlauncherAPI::getInstallPath));
@@ -184,14 +187,14 @@ btlauncherAPI::btlauncherAPI(const btlauncherPtr& plugin, const FB::BrowserHostP
 	registerMethod("downloadProgram", make_method(this, &btlauncherAPI::downloadProgram));
 	registerMethod("checkForUpdate", make_method(this, &btlauncherAPI::checkForUpdate));
 	registerMethod("ajax", make_method(this, &btlauncherAPI::ajax));
-    registerProperty("version", make_property(this, &btlauncherAPI::get_version));
+	registerProperty("version", make_property(this, &btlauncherAPI::get_version));
 	
 	FSRef ref;
-    OSType folderType = kApplicationSupportFolderType;
-    char path[PATH_MAX];
+	OSType folderType = kApplicationSupportFolderType;
+	char path[PATH_MAX];
 	
-    FSFindFolder( kUserDomain, folderType, kCreateFolder, &ref );
-    FSRefMakePath( &ref, (UInt8*)&path, PATH_MAX );
+	FSFindFolder( kUserDomain, folderType, kCreateFolder, &ref );
+	FSRefMakePath( &ref, (UInt8*)&path, PATH_MAX );
 	
 	this->installPath = string(path);
     
@@ -214,6 +217,13 @@ btlauncherAPI::btlauncherAPI(const btlauncherPtr& plugin, const FB::BrowserHostP
 btlauncherAPI::~btlauncherAPI()
 {
 	FBLOG_INFO("~btlauncherAPI()", "START");
+	if (m_outstanding_ajax_requests != 0)
+	{
+		char buf[100];
+		snprintf(buf, sizeof(buf), "ERROR: destructing with outstanding ajax requests: %d", m_outstanding_ajax_requests);
+		FBLOG_ERROR("~btlauncherAPI()", buf);
+	}
+	assert(m_outstanding_ajax_requests == 0);
 	FBLOG_INFO("~btlauncherAPI()", "END");
 }
 
@@ -482,10 +492,10 @@ FB::VariantList btlauncherAPI::isRunning(const std::string& val) {
 }
 
 void btlauncherAPI::gotCheckForUpdate(const FB::JSObjectPtr& callback,
-                                   bool success,
-                                   const FB::HeaderMap& header,
-                                   const boost::shared_array<uint8_t>& data,
-                                   const size_t size) {
+	bool success,
+	const FB::HeaderMap& header,
+	const boost::shared_array<uint8_t>& data,
+	const size_t size) {
 	FBLOG_INFO("gotCheckForUpdate()", "START");
     
 	char *tmpname = strdup("/tmp/btlauncherXXXXXX.pkg");
@@ -499,37 +509,37 @@ void btlauncherAPI::gotCheckForUpdate(const FB::JSObjectPtr& callback,
 	}
 	f.write((char *)data.get(), size);
 	f.close();
-    
-    switch(fork())
-    {
-        case -1: {
-            FBLOG_INFO("gotCheckForUpdate()", "fork - failure");
-            break;
-        }
-        case 0: {
-            FBLOG_INFO("gotCheckForUpdate()", "fork - child process");
-            FBLOG_INFO("gotCheckForUpdate()", tmpname);
-            execlp("installer", "installer", "-pkg", tmpname, "-target", "CurrentUserHomeDirectory", NULL);
-            FBLOG_INFO("gotCheckForUpdate()", "child process exit");
-            exit(1);
-        }
-        default: {
-            FBLOG_INFO("gotCheckForUpdate()", "fork - parent process");
-            break;
-        }
-    }
-    
-    callback->InvokeAsync("", FB::variant_list_of(true)(1));
+
+	switch(fork())
+	{
+		case -1: {
+				FBLOG_INFO("gotCheckForUpdate()", "fork - failure");
+				break;
+			}
+		case 0: {
+				FBLOG_INFO("gotCheckForUpdate()", "fork - child process");
+				FBLOG_INFO("gotCheckForUpdate()", tmpname);
+				execlp("installer", "installer", "-pkg", tmpname, "-target", "CurrentUserHomeDirectory", NULL);
+				FBLOG_INFO("gotCheckForUpdate()", "child process exit");
+				exit(1);
+			}
+		default: {
+				FBLOG_INFO("gotCheckForUpdate()", "fork - parent process");
+				break;
+			}
+	}
+
+	callback->InvokeAsync("", FB::variant_list_of(true)(1));
 	FBLOG_INFO("gotCheckForUpdate()", "END");
 }
 
 void btlauncherAPI::checkForUpdate(const FB::JSObjectPtr& callback) {
-    std::string url = std::string(PLUGIN_DL);
-    url.append( std::string("?v=") );
-    url.append( std::string(FBSTRING_PLUGIN_VERSION) );
-    
-    FB::SimpleStreamHelper::AsyncGet(m_host, FB::URI::fromString(url),
-                                     boost::bind(&btlauncherAPI::gotCheckForUpdate, this, callback, _1, _2, _3, _4), false);
+	std::string url = std::string(PLUGIN_DL);
+	url.append( std::string("?v=") );
+	url.append( std::string(FBSTRING_PLUGIN_VERSION) );
+
+	FB::SimpleStreamHelper::AsyncGet(m_host, FB::URI::fromString(url),
+		boost::bind(&btlauncherAPI::gotCheckForUpdate, this, callback, _1, _2, _3, _4), false);
 }
 
 void btlauncherAPI::ajax(const std::string& url, const FB::JSObjectPtr& callback) {
@@ -542,6 +552,7 @@ void btlauncherAPI::ajax(const std::string& url, const FB::JSObjectPtr& callback
 		callback->InvokeAsync("", FB::variant_list_of(response));
 		return;
 	}
+	++m_outstanding_ajax_requests;
 	FB::SimpleStreamHelper::AsyncGet(m_host, FB::URI::fromString(url), 
 		boost::bind(&btlauncherAPI::gotajax, this, callback, _1, _2, _3, _4), false
 		);
@@ -549,11 +560,14 @@ void btlauncherAPI::ajax(const std::string& url, const FB::JSObjectPtr& callback
 }
 
 void btlauncherAPI::gotajax(const FB::JSObjectPtr& callback, 
-							bool success,
-						    const FB::HeaderMap& headers,
-						    const boost::shared_array<uint8_t>& data,
-						    const size_t size) {
+	bool success,
+	const FB::HeaderMap& headers,
+	const boost::shared_array<uint8_t>& data,
+	const size_t size) {
 	FBLOG_INFO("gotajax()", "START");
+
+	assert(m_outstanding_ajax_requests > 0);
+	--m_outstanding_ajax_requests;
 
 	FB::VariantMap response;
 	response["allowed"] = true;
@@ -568,16 +582,16 @@ void btlauncherAPI::gotajax(const FB::JSObjectPtr& callback,
 	
 	FB::VariantMap outHeaders;
 	for (FB::HeaderMap::const_iterator it = headers.begin(); it != headers.end(); ++it) {
-        if (headers.count(it->first) > 1) {
-            if (outHeaders.find(it->first) != outHeaders.end()) {
-                outHeaders[it->first].cast<FB::VariantList>().push_back(it->second);
-            } else {
-                outHeaders[it->first] = FB::VariantList(FB::variant_list_of(it->second));
-            }
-        } else {
-            outHeaders[it->first] = it->second;
-        }
-    }
+		if (headers.count(it->first) > 1) {
+			if (outHeaders.find(it->first) != outHeaders.end()) {
+				outHeaders[it->first].cast<FB::VariantList>().push_back(it->second);
+			} else {
+				outHeaders[it->first] = FB::VariantList(FB::variant_list_of(it->second));
+			}
+		} else {
+			outHeaders[it->first] = it->second;
+		}
+	}
 	response["headers"] = outHeaders;
 	response["size"] = size;
 	std::string result = std::string((const char*) data.get(), size);
