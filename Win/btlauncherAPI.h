@@ -60,7 +60,7 @@ public:
 
 private:
 	bool isSupported(std::wstring program);
-	void gotajax(const FB::JSObjectPtr& callback, 
+	void gotajax(boost::uint32_t id,
 		bool success,
 		const FB::HeaderMap& headers,
 		const boost::shared_array<uint8_t>& data,
@@ -76,6 +76,14 @@ private:
 
 	std::string m_testString;
 	int m_outstanding_ajax_requests;
+
+	// the next request ID to use
+	boost::uint32_t m_ajax_request_id;
+
+	// maps a request ID to a callback object. It is necessary
+	// to store these this way so that we can abort them when
+	// shutting down
+	std::map<boost::uint32_t, FB::JSObjectPtr> m_outstanding_ajax;
 };
 
 #endif // H_btlauncherAPI

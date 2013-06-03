@@ -177,6 +177,7 @@ btlauncherAPI::btlauncherAPI(const btlauncherPtr& plugin, const FB::BrowserHostP
 	: m_plugin(plugin)
 	, m_host(host)
 	, m_outstanding_ajax_requests(0)
+	, m_ajax_request_id(0)
 {
 	FBLOG_INFO("btlauncherAPI()", "START");
 	registerMethod("getInstallPath", make_method(this, &btlauncherAPI::getInstallPath));
@@ -217,6 +218,20 @@ btlauncherAPI::btlauncherAPI(const btlauncherPtr& plugin, const FB::BrowserHostP
 btlauncherAPI::~btlauncherAPI()
 {
 	FBLOG_INFO("~btlauncherAPI()", "START");
+
+	// abort any outstanding ajax request
+	while (m_outstanding_ajax.begin() != m_outstanding_ajax.end())
+	{
+		char buf[100];
+		snprintf(buf, sizeof(buf), "aborting ajax request: %u", m_outstanding_ajax.begin()->first);
+		FBLOG_WARN("~btlauncherAPI()", buf);
+		FB::VariantMap response;
+		response["allowed"] = true;
+		response["success"] = false;
+		m_outstanding_ajax.begin()->second->InvokeAsync("", FB::variant_list_of(response));
+		m_outstanding_ajax.erase(m_outstanding_ajax.begin());
+	}
+
 	if (m_outstanding_ajax_requests != 0)
 	{
 		char buf[100];
@@ -543,40 +558,50 @@ void btlauncherAPI::checkForUpdate(const FB::JSObjectPtr& callback) {
 }
 
 void btlauncherAPI::ajax(const std::string& url, const FB::JSObjectPtr& callback) {
-	FBLOG_INFO("ajax()", "START");
-	FBLOG_INFO("ajax()", url.c_str());
+
+	char buf[2048];
+	snprintf(buf, sizeof(buf), "issuing ajax request %u: \"%s\"", m_ajax_request_id, url.c_str());
+	FBLOG_INFO("ajax()", buf);
+
 	if (FB::URI::fromString(url).domain != "127.0.0.1") {
 		FB::VariantMap response;
 		response["allowed"] = false;
 		response["success"] = false;
+		FBLOG_INFO("ajax()", "invalid");
 		callback->InvokeAsync("", FB::variant_list_of(response));
 		return;
 	}
 	++m_outstanding_ajax_requests;
-	FB::SimpleStreamHelper::AsyncGet(m_host, FB::URI::fromString(url), 
-		boost::bind(&btlauncherAPI::gotajax, this, callback, _1, _2, _3, _4), false
-		);
-	FBLOG_INFO("ajax()", "END");
+	boost::uint32_t id = m_ajax_request_id++;
+	m_outstanding_ajax[id] = callback;
+	FB::SimpleStreamHelper::AsyncGet(m_host, FB::URI::fromString(url),
+		boost::bind(&btlauncherAPI::gotajax, this, id, _1, _2, _3, _4), false);
 }
 
-void btlauncherAPI::gotajax(const FB::JSObjectPtr& callback, 
+void btlauncherAPI::gotajax(boost::uint32_t id,
 	bool success,
 	const FB::HeaderMap& headers,
 	const boost::shared_array<uint8_t>& data,
 	const size_t size) {
-	FBLOG_INFO("gotajax()", "START");
+
+	char buf[100];
+	snprintf(buf, sizeof(buf), "got response %u", id);
+	FBLOG_INFO("gotajax()", buf);
 
 	assert(m_outstanding_ajax_requests > 0);
 	--m_outstanding_ajax_requests;
+
+	FB::JSObjectPtr callback = m_outstanding_ajax[id];
+	assert(callback);
+	m_outstanding_ajax.erase(id);
 
 	FB::VariantMap response;
 	response["allowed"] = true;
 	response["success"] = success;
 	
 	if(!success) {
-		FBLOG_INFO("gotajax()", "unsuccessful");
+		FBLOG_INFO("gotajax()", "failed");
 		callback->InvokeAsync("", FB::variant_list_of(response));
-		FBLOG_INFO("gotajax()", "END");
 		return;
 	}
 	
@@ -598,5 +623,4 @@ void btlauncherAPI::gotajax(const FB::JSObjectPtr& callback,
 	response["data"] = result;
 	
 	callback->InvokeAsync("", FB::variant_list_of(response));
-	FBLOG_INFO("gotajax()", "END");
 }

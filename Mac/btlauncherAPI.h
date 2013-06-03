@@ -53,6 +53,14 @@ private:
 	FB::BrowserHostPtr m_host;
 	int m_outstanding_ajax_requests;
 
+	// the next request ID to use
+	boost::uint32_t m_ajax_request_id;
+
+	// maps a request ID to a callback object. It is necessary
+	// to store these this way so that we can abort them when
+	// shutting down
+	std::map<boost::uint32_t, FB::JSObjectPtr> m_outstanding_ajax;
+
 	void gotDownloadProgram(const FB::JSObjectPtr& callback, 
 		std::string& program,
 		bool success,
@@ -60,7 +68,7 @@ private:
 		const boost::shared_array<uint8_t>& data,
 		const size_t size);
 
-	void gotajax(const FB::JSObjectPtr& callback, 
+	void gotajax(boost::uint32_t,
 		bool success,
 		const FB::HeaderMap& headers,
 		const boost::shared_array<uint8_t>& data,
