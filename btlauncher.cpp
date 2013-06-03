@@ -147,6 +147,15 @@ void uncaught_exception()
 std::string btlauncher::GetLogFilePathName()
 {
 	std::string path = FB::System::getTempPath();
+	if (path[path.size()-1] != '\\' && path[path.size()-1] != '/')
+	{
+#ifdef WIN32
+		path += "\\";
+#else
+		path += "/";
+#endif
+	}
+
 	path += "bt_plugin.log";
 	return path;
 }
