@@ -50,19 +50,8 @@ typedef LONG (WINAPI *MYEXCEPTIONHANDLER)(_EXCEPTION_POINTERS *ExceptionInfo);
 LONG WINAPI MyExceptionHandler(_EXCEPTION_POINTERS *ExceptionInfo)
 {
 	FB::Log::stopLogging();
-	// open the log file
-	std::ifstream ifs(btlauncher::GetLogFilePathName().c_str());
 
 	FB::VariantMap data;
-	if(ifs){
-		// read logfile into a string
-		std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
-		data["log"] = content;
-	}
-	else{
-		data["log"] = "Logfile not available";
-	}
-	ifs.close();
 
 	// associate the exception code with text description
 	std::string exceptionText;
@@ -158,7 +147,7 @@ void uncaught_exception()
 std::string btlauncher::GetLogFilePathName()
 {
 	std::string path = FB::System::getTempPath();
-	path += "\\bt_plugin.log";
+	path += "bt_plugin.log";
 	return path;
 }
 
