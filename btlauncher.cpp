@@ -160,12 +160,12 @@ std::string btlauncher::GetLogFilePathName()
 	return path;
 }
 
-#ifndef DEBUG
+#ifdef NDEBUG
 inline
 #endif
 void btlauncher::DeleteLogFile()
 {
-#ifndef DEBUG
+#ifdef NDEBUG
 	FB::Log::stopLogging();
 	std::string path = GetLogFilePathName();
 	remove(path.c_str());
