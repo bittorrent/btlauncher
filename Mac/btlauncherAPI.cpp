@@ -432,24 +432,13 @@ FB::variant btlauncherAPI::runProgram(const std::string& program, const FB::JSOb
 	
 	FB::VariantList list = isRunning(program);
 	if (list.empty()) {
-		switch(fork()) 
-		{
-			case -1: {
-				perror("BTLauncher Run Program Fork");
-				FBLOG_INFO("runProgram()", "fork - failure");
-				break;
-			}
-			case 0: {
-				FBLOG_INFO("runProgram()", "fork - child process");
-				FBLOG_INFO("runProgram()", exe.c_str());
-				execlp(exe.c_str(), exe.c_str(), NULL);
-				FBLOG_INFO("runProgram()", "child process exit");
-				exit(1);
-			}
-			default: {
-				break;
-			}
-		}
+
+		// we need to have launchd run SoShare, otherwise Chrome seems to attribute
+		// it running to us, and not properly shut down the plugin process until
+		// SoShare is killed as well.
+		char cmd[PATH_MAX];
+		snprintf(cmd, sizeof(cmd), "launchctl submit -l soshare -- \"%s\"", exe.c_str());
+		system(cmd);
 	}
 	callback->InvokeAsync("", FB::variant_list_of(true)(1));
 	FBLOG_INFO("runProgram()", "END");
