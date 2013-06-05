@@ -103,6 +103,7 @@ LONG WINAPI MyExceptionHandler(_EXCEPTION_POINTERS *ExceptionInfo)
 
 void uncaught_exception()
 {
+	FB::VariantMap dataMap;
 	dataMap["action"] = "uncaught c++ exception";
 	dataMap["eventName"] = btlauncher::pluginName;
 	dataMap["version"] = btlauncher::version;

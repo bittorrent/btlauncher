@@ -66,6 +66,18 @@ char* PAIRING_DOMAINS[] = {
 
 #define NOT_SUPPORTED_MESSAGE "This application is not supported."
 
+#ifdef WIN32
+int snprintf(char* buf, int len, char const* fmt, ...)
+{
+   va_list lp;
+   va_start(lp, fmt);
+   int ret = _vsnprintf(buf, len, fmt, lp);
+   va_end(lp);
+   if (ret < 0) { buf[len-1] = 0; ret = len-1; }
+   return ret;
+}
+#endif
+
 BOOL write_elevation(const std::wstring& path, const std::wstring& name);
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -273,11 +285,9 @@ void btlauncherAPI::gotDownloadProgram(const FB::JSObjectPtr& callback,
 	OutputDebugString(pwszParam);
 	OutputDebugString(pwszArgs);
 
-	BOOL bProc = FALSE;
-	OutputDebugString(_T("gotDownloadProgram CreateProcess"));
-	bProc = CreateProcess(pwszParam, pwszArgs, NULL, NULL, FALSE, 0, NULL, NULL, &info, &procinfo);
+	int ret = (int)ShellExecute(NULL, L"open", pwszParam, pwszArgs, NULL, SW_SHOWNORMAL);
 
-	if(bProc) {
+	if (ret > 32) {
 		OutputDebugString(_T("gotDownloadProgram SUCCESS"));
 		do_callback( callback, FB::variant_list_of("PROCESS")(true)(installcommand.c_str())(GetLastError())(pairingkey));
 	} else {
@@ -289,17 +299,17 @@ void btlauncherAPI::gotDownloadProgram(const FB::JSObjectPtr& callback,
 
 #ifndef CHROME
 void btlauncherAPI::gotCheckForUpdate(const FB::JSObjectPtr& callback, 
-									   bool success,
-									   const FB::HeaderMap& headers,
-									   const boost::shared_array<uint8_t>& data,
-									   const size_t size) {
+	bool success,
+	const FB::HeaderMap& headers,
+	const boost::shared_array<uint8_t>& data,
+	const size_t size) {
 	if (! success) {
 		do_callback(callback, FB::variant_list_of(success));
 		return;
 	}
 	TCHAR temppath[500];
 	DWORD gettempresult = GetTempPath(500, temppath);
-	if (! gettempresult) {
+	if ( !gettempresult) {
 		do_callback(callback, FB::variant_list_of(false)("GetTempPath")(GetLastError()));
 		return;
 	}
@@ -337,7 +347,7 @@ void btlauncherAPI::gotCheckForUpdate(const FB::JSObjectPtr& callback,
 	/* CreateProcessW can modify installcommand thus we allocate needed memory */ 
 	wchar_t * pwszParam = new wchar_t[installcommand.size() + 1]; 
 	const wchar_t* pchrTemp = installcommand.c_str(); 
-    wcscpy_s(pwszParam, installcommand.size() + 1, pchrTemp); 
+	wcscpy_s(pwszParam, installcommand.size() + 1, pchrTemp); 
 
 	BOOL bProc = CreateProcess(NULL, pwszParam, NULL, NULL, FALSE, 0, NULL, NULL, &info, &procinfo);
 	if(bProc) {
@@ -604,7 +614,7 @@ BOOL launch_program(const std::wstring& program, const std::wstring& switches, b
 
 	wchar_t * pwszParam = new wchar_t[installcommand.size() + 1]; 
 	const wchar_t* pchrTemp = installcommand.c_str(); 
-    wcscpy_s(pwszParam, installcommand.size() + 1, pchrTemp); 
+	wcscpy_s(pwszParam, installcommand.size() + 1, pchrTemp); 
 	BOOL bProc = FALSE;
 	bProc = CreateProcess(NULL, pwszParam, NULL, NULL, FALSE, 0, NULL, NULL, &info, &procinfo);
 	if(wait) {
@@ -622,7 +632,7 @@ FB::variant btlauncherAPI::pair(const std::wstring& program) {
 	FB::URI uri = FB::URI::fromString(location);
 	OutputDebugStringA(location.c_str());
 
-#ifndef CHROME && VERIFY_PAIRING
+#if !defined CHROME && VERIFY_PAIRING
 	bool allowed = false;
 	for(int i = 0; i < lenof(PAIRING_DOMAINS); i++) {
 		allowed |= (uri.domain.find(PAIRING_DOMAINS[i])!=std::string::npos);
