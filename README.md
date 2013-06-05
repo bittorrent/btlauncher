@@ -85,3 +85,8 @@ debug instructions (windows):
 
 build instructions (osx):
 - install [cmake](http://www.cmake.org/files/v2.8/cmake-2.8.8-Darwin64-universal.dmg)
+- when in the btlauncher repo, run: ../FireBreath/prepmac.sh . build_mac
+- If you have macports installed, cmake is likely to have found the incorrect libxml2.dylib, if
+  so, open the resulting build_mac/FireBreath.xcodeproj/project.pbxproj and replace any occurrance
+  of /opt/local/lib/libxml2.dylib with /usr/lib/libxml2.dylib
+
