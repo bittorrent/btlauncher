@@ -207,6 +207,7 @@ void btlauncherAPI::gotDownloadProgram(boost::uint32_t id,
 	OutputDebugString(_T("gotDownloadProgram ENTER"));
 										   
 	assert(m_outstanding_requests.count(id) == 1);
+	m_outstanding_requests[id]->getStream()->close();
 	m_outstanding_requests.erase(id);
 
 	if(!success) {
@@ -300,6 +301,7 @@ void btlauncherAPI::gotCheckForUpdate(boost::uint32_t id,
 {
 
 	assert(m_outstanding_requests.count(id) == 1);
+	m_outstanding_requests[id]->getStream()->close();
 	m_outstanding_requests.erase(id);
 
 	if (! success) {
@@ -406,6 +408,7 @@ void btlauncherAPI::gotajax(boost::uint32_t id,
 	FBLOG_INFO("gotajax()", buf);
 
 	assert(m_outstanding_requests.count(id) == 1);
+	m_outstanding_requests[id]->getStream()->close();
 	m_outstanding_requests.erase(id);
   
 	FB::VariantMap response;

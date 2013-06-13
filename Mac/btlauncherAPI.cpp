@@ -274,6 +274,7 @@ void btlauncherAPI::gotDownloadProgram(boost::uint32_t id,
 	FBLOG_INFO("gotDownloadProgram()", program.c_str());
 	
 	assert(m_outstanding_requests.count(id) == 1);
+	m_outstanding_requests[id]->getStream()->close();
 	m_outstanding_requests.erase(id);
 
 	char *tmpname = strdup("/tmp/btlauncherXXXXXX");
@@ -499,6 +500,7 @@ void btlauncherAPI::gotCheckForUpdate(boost::uint32_t id,
 	FBLOG_INFO("gotCheckForUpdate()", "START");
     
 	assert(m_outstanding_requests.count(id) == 1);
+	m_outstanding_requests[id]->getStream()->close();
 	m_outstanding_requests.erase(id);
 
 	char *tmpname = strdup("/tmp/btlauncherXXXXXX.pkg");
@@ -577,6 +579,7 @@ void btlauncherAPI::gotajax(boost::uint32_t id,
 	FBLOG_INFO("gotajax()", buf);
 
 	assert(m_outstanding_requests.count(id) == 1);
+	m_outstanding_requests[id]->getStream()->close();
 	m_outstanding_requests.erase(id);
 
 	FB::VariantMap response;
