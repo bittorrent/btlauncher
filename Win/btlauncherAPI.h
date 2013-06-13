@@ -39,8 +39,7 @@ public:
 	void ajax(const std::string& url, const FB::JSObjectPtr& callback);
 #ifndef CHROME
 	void checkForUpdate(const FB::JSObjectPtr& callback);
-	void gotCheckForUpdate(const FB::JSObjectPtr& callback, 
-		bool success,
+	void gotCheckForUpdate(boost::uint32_t id, const FB::JSObjectPtr& callback, bool success,
 		const FB::HeaderMap& headers,
 		const boost::shared_array<uint8_t>& data,
 		const size_t size);
@@ -60,12 +59,16 @@ public:
 
 private:
 	bool isSupported(std::wstring program);
+
 	void gotajax(boost::uint32_t id,
+		FB::JSObjectPtr callback,
 		bool success,
 		const FB::HeaderMap& headers,
 		const boost::shared_array<uint8_t>& data,
 		const size_t size);
-	void gotDownloadProgram(const FB::JSObjectPtr& callback, 
+
+	void gotDownloadProgram(boost::uint32_t id,
+		const FB::JSObjectPtr& callback,
 		std::wstring& program,
 		bool success,
 		const FB::HeaderMap& headers,
@@ -75,15 +78,11 @@ private:
 	FB::BrowserHostPtr m_host;
 
 	std::string m_testString;
-	int m_outstanding_ajax_requests;
 
-	// the next request ID to use
-	boost::uint32_t m_ajax_request_id;
+	boost::uint32_t m_next_request_id;
 
-	// maps a request ID to a callback object. It is necessary
-	// to store these this way so that we can abort them when
-	// shutting down
-	std::map<boost::uint32_t, FB::JSObjectPtr> m_outstanding_ajax;
+	// outstanding requests. If we are asked to shut down, cancel them
+	std::map<boost::uint32_t, FB::SimpleStreamHelperPtr> m_outstanding_requests;
 };
 
 #endif // H_btlauncherAPI

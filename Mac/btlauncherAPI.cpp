@@ -176,8 +176,7 @@ static void child_handler(int sig)
 btlauncherAPI::btlauncherAPI(const btlauncherPtr& plugin, const FB::BrowserHostPtr& host)
 	: m_plugin(plugin)
 	, m_host(host)
-	, m_outstanding_ajax_requests(0)
-	, m_ajax_request_id(0)
+	, m_next_request_id(0)
 {
 	FBLOG_INFO("btlauncherAPI()", "START");
 	registerMethod("getInstallPath", make_method(this, &btlauncherAPI::getInstallPath));
@@ -220,25 +219,15 @@ btlauncherAPI::~btlauncherAPI()
 	FBLOG_INFO("~btlauncherAPI()", "START");
 
 	// abort any outstanding ajax request
-	while (m_outstanding_ajax.begin() != m_outstanding_ajax.end())
+	while (m_outstanding_requests.begin() != m_outstanding_requests.end())
 	{
 		char buf[100];
-		snprintf(buf, sizeof(buf), "aborting ajax request: %u", m_outstanding_ajax.begin()->first);
+		snprintf(buf, sizeof(buf), "aborting request: %u", m_outstanding_requests.begin()->first);
 		FBLOG_WARN("~btlauncherAPI()", buf);
-		FB::VariantMap response;
-		response["allowed"] = true;
-		response["success"] = false;
-		m_outstanding_ajax.begin()->second->InvokeAsync("", FB::variant_list_of(response));
-		m_outstanding_ajax.erase(m_outstanding_ajax.begin());
+		m_outstanding_requests.begin()->second->getStream()->close();
+		m_outstanding_requests.erase(m_outstanding_requests.begin());
 	}
 
-	if (m_outstanding_ajax_requests != 0)
-	{
-		char buf[100];
-		snprintf(buf, sizeof(buf), "ERROR: destructing with outstanding ajax requests: %d", m_outstanding_ajax_requests);
-		FBLOG_ERROR("~btlauncherAPI()", buf);
-	}
-	assert(m_outstanding_ajax_requests == 0);
 	FBLOG_INFO("~btlauncherAPI()", "END");
 }
 
@@ -273,15 +262,19 @@ std::string btlauncherAPI::get_version()
 }
 
 #define bufsz 2048
-void btlauncherAPI::gotDownloadProgram(const FB::JSObjectPtr& callback, 
-									   std::string& program,
-									   bool success,
-									   const FB::HeaderMap& headers,
-									   const boost::shared_array<uint8_t>& data,
-									   const size_t size) {
+void btlauncherAPI::gotDownloadProgram(boost::uint32_t id,
+	const FB::JSObjectPtr& callback,
+	std::string& program,
+	bool success,
+	const FB::HeaderMap& headers,
+	const boost::shared_array<uint8_t>& data,
+	const size_t size)
+{
 	FBLOG_INFO("gotDownloadProgram()", "START");
 	FBLOG_INFO("gotDownloadProgram()", program.c_str());
 	
+	assert(m_outstanding_requests.count(id) == 1);
+	m_outstanding_requests.erase(id);
 
 	char *tmpname = strdup("/tmp/btlauncherXXXXXX");
 	mkstemp(tmpname);
@@ -341,8 +334,10 @@ void btlauncherAPI::downloadProgram(const std::string& program, const FB::JSObje
 		url = BTLIVE_DOWNLOAD_URL;
 
 	FBLOG_INFO("downloadProgram()", url.c_str());
-	FB::SimpleStreamHelper::AsyncGet(m_host, FB::URI::fromString(url), 
-		boost::bind(&btlauncherAPI::gotDownloadProgram, this, callback, program, _1, _2, _3, _4), false
+
+	boost::uint32_t id = m_next_request_id++;
+	m_outstanding_requests[id] = FB::SimpleStreamHelper::AsyncGet(m_host, FB::URI::fromString(url),
+		boost::bind(&btlauncherAPI::gotDownloadProgram, this, id, callback, program, _1, _2, _3, _4), false
 		);
 	FBLOG_INFO("downloadProgram()", "END");
 }
@@ -495,13 +490,17 @@ FB::VariantList btlauncherAPI::isRunning(const std::string& val) {
 	return list;
 }
 
-void btlauncherAPI::gotCheckForUpdate(const FB::JSObjectPtr& callback,
+void btlauncherAPI::gotCheckForUpdate(boost::uint32_t id,
+	const FB::JSObjectPtr& callback,
 	bool success,
 	const FB::HeaderMap& header,
 	const boost::shared_array<uint8_t>& data,
 	const size_t size) {
 	FBLOG_INFO("gotCheckForUpdate()", "START");
     
+	assert(m_outstanding_requests.count(id) == 1);
+	m_outstanding_requests.erase(id);
+
 	char *tmpname = strdup("/tmp/btlauncherXXXXXX.pkg");
 	mkstemp(tmpname);
 	ofstream f(tmpname);
@@ -542,14 +541,15 @@ void btlauncherAPI::checkForUpdate(const FB::JSObjectPtr& callback) {
 	url.append( std::string("?v=") );
 	url.append( std::string(FBSTRING_PLUGIN_VERSION) );
 
-	FB::SimpleStreamHelper::AsyncGet(m_host, FB::URI::fromString(url),
-		boost::bind(&btlauncherAPI::gotCheckForUpdate, this, callback, _1, _2, _3, _4), false);
+	boost::uint32_t id = m_next_request_id++;
+	m_outstanding_requests[id] = FB::SimpleStreamHelper::AsyncGet(m_host, FB::URI::fromString(url),
+		boost::bind(&btlauncherAPI::gotCheckForUpdate, this, id, callback, _1, _2, _3, _4), false);
 }
 
 void btlauncherAPI::ajax(const std::string& url, const FB::JSObjectPtr& callback) {
 
 	char buf[2048];
-	snprintf(buf, sizeof(buf), "issuing ajax request %u: \"%s\"", m_ajax_request_id, url.c_str());
+	snprintf(buf, sizeof(buf), "issuing request %u: \"%s\"", m_next_request_id, url.c_str());
 	FBLOG_INFO("ajax()", buf);
 
 	if (FB::URI::fromString(url).domain != "127.0.0.1") {
@@ -560,14 +560,13 @@ void btlauncherAPI::ajax(const std::string& url, const FB::JSObjectPtr& callback
 		callback->InvokeAsync("", FB::variant_list_of(response));
 		return;
 	}
-	++m_outstanding_ajax_requests;
-	boost::uint32_t id = m_ajax_request_id++;
-	m_outstanding_ajax[id] = callback;
-	FB::SimpleStreamHelper::AsyncGet(m_host, FB::URI::fromString(url),
-		boost::bind(&btlauncherAPI::gotajax, this, id, _1, _2, _3, _4), false);
+	boost::uint32_t id = m_next_request_id++;
+	m_outstanding_requests[id] = FB::SimpleStreamHelper::AsyncGet(m_host, FB::URI::fromString(url),
+		boost::bind(&btlauncherAPI::gotajax, this, id, callback, _1, _2, _3, _4), false);
 }
 
 void btlauncherAPI::gotajax(boost::uint32_t id,
+	FB::JSObjectPtr callback,
 	bool success,
 	const FB::HeaderMap& headers,
 	const boost::shared_array<uint8_t>& data,
@@ -577,12 +576,8 @@ void btlauncherAPI::gotajax(boost::uint32_t id,
 	snprintf(buf, sizeof(buf), "got response %u", id);
 	FBLOG_INFO("gotajax()", buf);
 
-	assert(m_outstanding_ajax_requests > 0);
-	--m_outstanding_ajax_requests;
-
-	FB::JSObjectPtr callback = m_outstanding_ajax[id];
-	assert(callback);
-	m_outstanding_ajax.erase(id);
+	assert(m_outstanding_requests.count(id) == 1);
+	m_outstanding_requests.erase(id);
 
 	FB::VariantMap response;
 	response["allowed"] = true;
