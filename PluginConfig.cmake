@@ -7,6 +7,7 @@
 
 set(PREPROCESSOR_DEFINE "SHARE")
 set(PLUGIN_NAME "SoShare")
+set(PRODUCT_NAME "SoShare")
 set(PLUGIN_PREFIX "BTSS")
 set(COMPANY_NAME "BitTorrent")
 
@@ -37,7 +38,7 @@ set(FBSTRING_CompanyName "BitTorrent, Inc")
 set(FBSTRING_FileDescription "Launches BitTorrent SoShare")
 set(FBSTRING_PLUGIN_VERSION "4.4.2")
 set(FBSTRING_LegalCopyright "Copyright 2013 BitTorrent, Inc")
-set(FBSTRING_PluginFileName "np${PLUGIN_NAME}.dll")
+set(FBSTRING_PluginFileName "${PLUGIN_NAME}.dll")
 set(FBSTRING_ProductName "SoShare Plugin")
 set(FBSTRING_FileExtents "")
 set(FBSTRING_PluginName "SoShare Plugin")
@@ -61,3 +62,5 @@ set(FBMAC_USE_INVALIDATINGCOREANIMATION 0)
 #add_firebreath_library(curl)
 add_firebreath_library(jsoncpp)
 add_firebreath_library(log4cplus)
+add_boost_library(system)
+
