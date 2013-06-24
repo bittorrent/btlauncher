@@ -9,6 +9,8 @@
 #ifndef H_btlauncherPLUGIN
 #define H_btlauncherPLUGIN
 
+#define USE_STAGING 1
+
 #ifdef WIN32
 #include <windows.h>
 #include <wininet.h>

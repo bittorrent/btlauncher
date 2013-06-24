@@ -45,11 +45,19 @@ using namespace std;
 
 #define SOSHARE_INFO_PATH "/SoShare.app/Contents/Info.plist"
 #define SOSHARE_EXE_PATH "/SoShare.app/Contents/MacOS/SoShare"
+#ifdef USE_STAGING
+#define SOSHARE_DOWNLOAD_URL "http://download.staging.utorrent.com/mac/SoShare.tar.gz"
+#else
 #define SOSHARE_DOWNLOAD_URL "http://download.utorrent.com/mac/SoShare.tar.gz"
+#endif
 
 #define TORQUE_INFO_PATH "/Torque.app/Contents/Info.plist"
 #define TORQUE_EXE_PATH "/Torque.app/Contents/MacOS/Torque"
+#ifdef USE_STAGING
+#define TORQUE_DOWNLOAD_URL "http://download.staging.utorrent.com/mac/Torque.tar.gz"
+#else
 #define TORQUE_DOWNLOAD_URL "http://download.utorrent.com/mac/Torque.tar.gz"
+#endif
 
 #ifdef SHARE
 #define PLUGIN_DL "http://torque.bittorrent.com/SoShare.pkg"
