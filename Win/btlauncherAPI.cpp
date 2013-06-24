@@ -48,8 +48,14 @@
 #define UT_DL "http://download.utorrent.com/latest/uTorrent.exe"
 #define BT_DL "http://download.bittorrent.com/latest/BitTorrent.exe"
 #define LV_DL "http://s3.amazonaws.com/live-installer/BTLivePlugin.exe"
+
+#ifdef USE_STAGING
+#define TORQUE_DL "http://download.staging.utorrent.com/torque/latest/Torque.exe"
+#define SOSHARE_DL "http://download.staging.utorrent.com/soshare/latest/SoShare.exe"
+#else
 #define TORQUE_DL "http://download.utorrent.com/torque/latest/Torque.exe"
 #define SOSHARE_DL "http://download.utorrent.com/soshare/latest/SoShare.exe"
+#endif
 
 #define lenof(x) (sizeof(x)/sizeof(x[0]))
 

@@ -9,6 +9,8 @@
 #ifndef H_btlauncherPLUGIN
 #define H_btlauncherPLUGIN
 
+#define USE_STAGING 1
+
 #include "PluginWindow.h"
 #include "PluginEvents/MouseEvents.h"
 #include "PluginEvents/AttachedEvent.h"
